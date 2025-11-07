@@ -2,6 +2,21 @@
 REM Training script launcher for Franka Robotic Arm with Isaac Sim
 REM This script ensures CUDA libraries are available and uses Isaac Sim's Python
 
+REM CRITICAL: Deactivate ALL conda environments to force Isaac Sim Python usage
+:deactivate_conda
+if defined CONDA_DEFAULT_ENV (
+    echo [INFO] Deactivating conda environment: %CONDA_DEFAULT_ENV%
+    call conda deactivate
+    goto deactivate_conda
+)
+if defined CONDA_PREFIX (
+    echo [INFO] Clearing conda environment variables...
+    set CONDA_PREFIX=
+    set CONDA_DEFAULT_ENV=
+    set CONDA_PYTHON_EXE=
+    set CONDA_PROMPT_MODIFIER=
+)
+
 echo ========================================
 echo Franka Robotic Arm Training Launcher
 echo ========================================
@@ -32,12 +47,12 @@ if not exist "C:\IsaacLab\isaaclab.bat" (
 REM Run the training script using Isaac Sim's Python
 echo [INFO] Starting training with Isaac Sim environment...
 echo [INFO] Python from: C:\IsaacLab\_isaac_sim\python.bat
-echo [INFO] Number of environments: 40 (adaptive scaling enabled)
+echo [INFO] Number of environments: 10 (adaptive scaling enabled)
 echo [INFO] Random seed: 42 (for reproducibility)
 echo [INFO] Mode: Headless (no GUI for faster training)
 echo.
 
-C:\IsaacLab\isaaclab.bat -p franka_train.py --num-envs 40 --seed 42 --headless
+C:\IsaacLab\isaaclab.bat -p franka_train.py --num-envs 10 --seed 42 --headless
 
 echo.
 echo ========================================
