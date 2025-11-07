@@ -222,6 +222,7 @@ class FrankaShadowLiftEnvCfg(ManagerBasedRLEnvCfg):
     # Environment settings
     decimation = 2
     episode_length_s = 10.0
+    seed = None  # Will be set from command line args
     
     def __post_init__(self):
         """Post initialization."""
@@ -252,8 +253,8 @@ class FrankaShadowLiftEnvCfg(ManagerBasedRLEnvCfg):
         
         # rl settings
         self.num_frames = 3
-        self.num_actions = 28
-        self.num_observations = 132
+        self.num_actions = 30  # 6 (arm IK) + 24 (hand joints)
+        self.num_observations = 134  # Updated to match actual observation space
         self.num_goals = 6
         self.num_stages = 2
         self.reward_func = FrankaCudeLiftReward(scale_factor=1.0)

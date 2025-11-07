@@ -1,0 +1,75 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+env/
+venv/
+ENV/
+env_isaaclab/
+.venv
+
+# Training outputs (IMPORTANT: Don't commit training data!)
+runs/
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.ckpt
+
+# Experiment logs
+*.log
+events.out.tfevents.*
+tensorboard/
+
+# Isaac Sim cache and temp files
+*.usd
+*.usda
+*.usdc
+_isaac_sim/
+.nvidia-omniverse-logs/
+kit_logs/
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# System files
+Thumbs.db
+desktop.ini
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Documentation build
+docs/_build/
+docs/.doctrees/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Environment variables
+.env
+.env.local
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
