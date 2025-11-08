@@ -228,7 +228,7 @@ class FrankaShadowLiftEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 2
-        self.episode_length_s = 3.2
+        self.episode_length_s = 5.0  # TĂNG từ 3.2 → 5.0: nhiều thời gian hơn để di chuyển
         # simulation settings
         self.sim.dt = 0.025
         self.sim.render_interval = self.decimation
@@ -257,4 +257,4 @@ class FrankaShadowLiftEnvCfg(ManagerBasedRLEnvCfg):
         self.num_observations = 134  # Updated to match actual observation space
         self.num_goals = 6
         self.num_stages = 2
-        self.reward_func = FrankaCudeLiftReward(scale_factor=1.0)
+        self.reward_func = FrankaCudeLiftReward(scale_factor=2.0)  # TĂNG từ 1.0 → 2.0

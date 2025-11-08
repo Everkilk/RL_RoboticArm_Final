@@ -57,7 +57,7 @@ class ActionsCfg:
             ik_method="dls"
         ),
         body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(pos=[0.0, 0.0, 0.0]),
-        scale=[0.05, 0.05, 0.05, math.pi / 12, math.pi / 12, math.pi / 12]
+        scale=[0.1, 0.1, 0.1, math.pi / 6, math.pi / 6, math.pi / 6]
     )
     
     # Direct joint control for Shadow Hand (24 DOF)

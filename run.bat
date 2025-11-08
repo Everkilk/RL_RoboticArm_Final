@@ -47,12 +47,12 @@ if not exist "C:\IsaacLab\isaaclab.bat" (
 REM Run the training script using Isaac Sim's Python
 echo [INFO] Starting training with Isaac Sim environment...
 echo [INFO] Python from: C:\IsaacLab\_isaac_sim\python.bat
-echo [INFO] Number of environments: 10 (adaptive scaling enabled)
+echo [INFO] Number of environments: 40 (adaptive scaling enabled)
 echo [INFO] Random seed: 42 (for reproducibility)
 echo [INFO] Mode: Headless (no GUI for faster training)
 echo.
 
-C:\IsaacLab\isaaclab.bat -p franka_train.py --num-envs 10 --seed 42 --headless
+C:\IsaacLab\isaaclab.bat -p franka_train.py --num-envs 40 --seed 42 --headless
 
 echo.
 echo ========================================
