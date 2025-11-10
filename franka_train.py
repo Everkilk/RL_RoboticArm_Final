@@ -14,6 +14,10 @@ from isaaclab.app import AppLauncher
 parser = argparse.ArgumentParser(description="Tutorial on creating a cartpole base environment.")
 parser.add_argument("--num-envs", type=int, default=10, help="Number of environments to spawn.")
 parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
+# training loop / learner arguments (exposed to CLI)
+parser.add_argument("--num-cycles", "--num_cycles", type=int, default=1, help="Number of cycles per epoch (passed to learner.run).")
+parser.add_argument("--num-updates", "--num_updates", type=int, default=1, help="Number of gradient updates per cycle (passed to learner.run).")
+parser.add_argument("--resume-path", type=str, default="", help="Path to checkpoint to resume from (if any).")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
