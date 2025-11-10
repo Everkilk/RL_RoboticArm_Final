@@ -14,6 +14,7 @@ from isaaclab.app import AppLauncher
 parser = argparse.ArgumentParser(description="Tutorial on creating a cartpole base environment.")
 parser.add_argument("--num-envs", type=int, default=10, help="Number of environments to spawn.")
 parser.add_argument("--num_cycles", type=int, default=200, help="Number of cycles per epoch.")
+parser.add_argument("--num_updates", type=int, default=128, help="Number of gradient updates per cycle.")
 parser.add_argument("--resume_path", type=str, default=None, help="Path to resume training from (e.g., runs/exp4)")
 
 # append AppLauncher cli args
@@ -149,7 +150,7 @@ if __name__ == '__main__':
         num_cycles=args_cli.num_cycles,        
         num_eval_episodes=50,  
         r_mix=0.5,             
-        num_updates=128,       
+        num_updates=args_cli.num_updates,       
         batch_size=512,
         future_p=0.8,                   
         discounted_factor=0.98,
