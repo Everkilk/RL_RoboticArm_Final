@@ -49,6 +49,8 @@ class PositionCommand(CommandTerm):
         self.metrics['moved_dist'] = torch.zeros(self.num_envs, device=self.device)
         self.metrics['moved_z'] = torch.zeros(self.num_envs, device=self.device)
         self.metrics['hand2obj_dist'] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics['orient_error_deg'] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics['orient_error_rad'] = torch.zeros(self.num_envs, device=self.device)
 
     def __str__(self) -> str:
         msg = "PoseCommand:\n"
@@ -62,11 +64,11 @@ class PositionCommand(CommandTerm):
 
     @property
     def command(self) -> Sequence[torch.Tensor]:
-        """The desired pose command. Shape is (num_envs, 6).
+        """The desired pose command. Shape is (num_envs, 7).
 
-        The first three elements correspond to the position, followed by the euler angle orientation in (x, y, z).
+        The first three elements correspond to the position, followed by the quaternion orientation (qw, qx, qy, qz).
         """
-        return self.pose_command_b[:, :3]
+        return self.pose_command_b  # Return full 7D pose (pos + quat)
 
     """
     Implementation specific functions.
@@ -82,19 +84,39 @@ class PositionCommand(CommandTerm):
         )
         
         # get current command object pose --------
-        pos_command_b = self.command
+        pos_command_b = self.pose_command_b[:, :3]  # Extract position from full pose
+        quat_command_b = self.pose_command_b[:, 3:]  # Extract quaternion from full pose
+        
         pos_object_b = get_object_position_in_robot_root_frame(
             env=self._env, robot_cfg=SceneEntityCfg(self.cfg.asset_name), object_cfg=SceneEntityCfg(self.cfg.object_name)
         )
         orient_object_b = get_object_orientation_in_robot_root_frame(
             env=self._env, robot_cfg=SceneEntityCfg(self.cfg.asset_name), object_cfg=SceneEntityCfg(self.cfg.object_name)
         )
+        # Convert object euler angles to quaternion for comparison
+        quat_object_b = math_utils.quat_from_euler_xyz(
+            orient_object_b[:, 0], orient_object_b[:, 1], orient_object_b[:, 2]
+        )
+        
         hand_ee_pos_b = get_hand_pose(env=self._env)[:, :3]
+        
         # update metrics --------------------------
+        # Position metrics
         self.metrics['distance'] = (pos_object_b - pos_command_b).norm(dim=1)
         self.metrics['moved_dist'] += (pos_object_b - self.pre_pos_object_b).norm(dim=1)
         self.metrics['moved_z'] += (pos_object_b[:, 2] - self.pre_pos_object_b[:, 2]).abs()
         self.metrics['hand2obj_dist'] = (hand_ee_pos_b - pos_object_b).norm(dim=-1)
+        
+        # Orientation metrics
+        # Calculate quaternion difference between object and goal orientation
+        quat_diff = math_utils.quat_mul(quat_object_b, math_utils.quat_conjugate(quat_command_b))
+        # Extract angle from quaternion (angle = 2 * arccos(w))
+        angle_diff_rad = 2 * torch.acos(quat_diff[:, 0].clamp(-1.0, 1.0))
+        angle_diff_deg = torch.rad2deg(angle_diff_rad)
+        self.metrics['orient_error_deg'] = angle_diff_deg
+        self.metrics['orient_error_rad'] = angle_diff_rad
+        
+        # Update previous states
         self.pre_pos_object_b = pos_object_b
         self.pre_orient_object_b = orient_object_b
 
@@ -103,9 +125,17 @@ class PositionCommand(CommandTerm):
             env_ids = torch.LongTensor(env_ids).to(self.device)
         
         # setup new pose targets -----------------
+        # Position
         self.pose_command_b[env_ids, 0] = self.pose_command_b[env_ids, 0].uniform_(0.2, 0.4)
         self.pose_command_b[env_ids, 1] = self.pose_command_b[env_ids, 1].uniform_(-0.15, 0.15)
         self.pose_command_b[env_ids, 2] = self.pose_command_b[env_ids, 1].uniform_(0.2, 0.35)
+        
+        # Orientation - generate random euler angles and convert to quaternion
+        roll = torch.zeros(len(env_ids), device=self.device).uniform_(-0.3, 0.3)  # ±17 degrees
+        pitch = torch.zeros(len(env_ids), device=self.device).uniform_(-0.3, 0.3)
+        yaw = torch.zeros(len(env_ids), device=self.device).uniform_(-3.14159, 3.14159)  # Full rotation
+        target_quat = math_utils.quat_from_euler_xyz(roll, pitch, yaw)
+        self.pose_command_b[env_ids, 3:] = target_quat
 
         # get object positions and orientation
         self.pre_pos_object_b[env_ids] = get_object_position_in_robot_root_frame(

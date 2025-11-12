@@ -8,19 +8,12 @@ import isaaclab.utils.math as math_utils
 ###
 
 class FrankaCudeLiftReward:
-    """Custom reward function for Franka-Shadow cube lifting + orientation task.
-
-    Stages:
-        0: Reach object (fingertips approach object volume)
-        1: Align object orientation with goal orientation (dense)
-        2: Lift object to goal position
-    """
-
-    def __init__(self, scale_factor: float = 1.0, orient_reward_scale: float = 1.0):
+    """Custom reward function for Franka-Shadow cube lifting task."""
+    
+    def __init__(self, scale_factor: float = 1.0):
         self.scale_factor = scale_factor
         self.object_lengths = torch.tensor([0.06, 0.06, 0.06])
         self.grasp_range = torch.tensor([0.12, 0.12, 0.09])
-        self.orient_reward_scale = orient_reward_scale
     
     def __call__(
         self, 
@@ -35,7 +28,7 @@ class FrankaCudeLiftReward:
         Args:
             next_observations: Current and next observations
             encoded_goals: Target encoded goals
-            stage_id: Current stage (0=reach, 1=orient, 2=lift)
+            stage_id: Current stage (0=reach, 1=lift)
             metas: Meta information for penalties
         """
         # Pre-process
@@ -86,31 +79,35 @@ class FrankaCudeLiftReward:
             # terminals = ((hand_ee_pos - encoded_goals[:, :3]).norm(dim=-1) <= 0.05).float()
             task_rewards = terminals + 0.5 * combined_scores
             # + combined_scores
-        elif stage_id == 1:  # Align orientation (dense reward)
-            # Expect encoded_goals shape (..., 10) with quaternion target at indices 6:10.
-            # If shorter (<=6), orientation stage cannot be used; fallback to zero reward.
-            if encoded_goals.shape[1] < 10:
-                # Fallback: no orientation goal provided
-                terminals = torch.zeros_like(penalty_rewards)
-                task_rewards = terminals
-            else:
-                target_quat = encoded_goals[:, 6:10]
-                # Ensure quaternions are unit (avoid NaNs)
-                object_quat_n = object_quat / object_quat.norm(dim=-1, keepdim=True).clamp_min(1e-8)
-                target_quat_n = target_quat / target_quat.norm(dim=-1, keepdim=True).clamp_min(1e-8)
-                # Quaternion alignment error: angle between orientations
-                # dot = cos(theta/2); angle = 2 * arccos(|dot|)
-                dots = (object_quat_n * target_quat_n).sum(dim=-1).abs().clamp(0.0, 1.0)
-                angles = 2.0 * torch.arccos(dots)  # in [0, pi]
-                # Dense reward: higher when angle small. Normalize by pi.
-                orient_dense = 1.0 - (angles / math_utils.PI)
-                # Terminal when orientation within threshold (e.g., 10 degrees ~ 0.1745 rad)
-                terminals = (angles <= 0.1745).float()
-                task_rewards = self.orient_reward_scale * orient_dense + terminals
-        elif stage_id == 2:  # Lift to goal (position)
-            distances = (object_pos - encoded_goals[:, 3:6]).norm(dim=-1)
-            terminals = (distances <= 0.03).float()
-            task_rewards = terminals
+        elif stage_id == 1:  # Lift to goal with orientation
+            # Extract goal orientation (assuming it's stored after position in encoded_goals)
+            goal_pos = encoded_goals[:, 3:6]
+            goal_orient = encoded_goals[:, 6:9]  # Assuming euler angles
+            goal_quat = math_utils.quat_from_euler_xyz(goal_orient[:, 0], goal_orient[:, 1], goal_orient[:, 2])
+            
+            # Calculate position distance
+            position_distances = (object_pos - goal_pos).norm(dim=-1)
+            position_achieved = (position_distances <= 0.03).float()
+            
+            # Calculate orientation difference (in degrees)
+            # Compute quaternion difference between object and goal orientation
+            quat_diff = math_utils.quat_mul(object_quat, math_utils.quat_conjugate(goal_quat))
+            # Extract angle from quaternion (angle = 2 * arccos(w))
+            angle_diff_rad = 2 * torch.acos(quat_diff[:, 0].clamp(-1.0, 1.0))
+            angle_diff_deg = torch.rad2deg(angle_diff_rad)
+            orientation_achieved = (angle_diff_deg <= 15.0).float()
+            
+            # Both conditions must be satisfied for terminal state
+            terminals = (position_achieved * orientation_achieved)
+            
+            # Calculate reward components
+            # Orientation reward: higher when angle is smaller
+            orientation_reward = (1.0 - (angle_diff_deg / 180.0).clamp(0.0, 1.0))
+            # Position reward: higher when distance is smaller
+            position_reward = (1.0 - (position_distances / 0.1).clamp(0.0, 1.0))
+            
+            # Combined task reward
+            task_rewards = terminals + 0.3 * orientation_reward + 0.3 * position_reward
         else:
             raise ValueError(f"Invalid stage_id: {stage_id}")
         

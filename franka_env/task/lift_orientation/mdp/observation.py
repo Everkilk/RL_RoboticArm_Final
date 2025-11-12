@@ -70,52 +70,42 @@ def get_fingertip_poses(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 def get_command(env: ManagerBasedRLEnv) -> torch.Tensor:
     """The generated command from command term in the command manager."""
-    return env.command_manager.get_command('object_pos')
+    return env.command_manager.get_command('object_pos')  # Returns (n, 7): pos(3) + quat(4)
 
 
 def format_target_goals(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Format target goals for HER-style training (3 stages, 10 dims per stage).
-
-    Goal layout per stage (10D): [hand_target_pos(3), object_target_pos(3), target_quat(4)]
-      - Stage 0 (reach): hand_target_pos = object_pos, others zero/identity
-      - Stage 1 (orientation): target_quat = identity (upright), others zero
-      - Stage 2 (lift): object_target_pos = commanded target position, others zero/identity
-    """
-    device = env.device
-    target_pos = get_command(env)  # (n, 3)
+    """Format target goals for HER-style training."""
+    target_pose = get_command(env)  # (n, 7): pos(3) + quat(4)
+    target_pos = target_pose[:, :3]
+    target_quat = target_pose[:, 3:]
+    # Convert quaternion to euler for easier handling
+    target_orient = torch.stack([
+        torch.atan2(2*(target_quat[:, 0]*target_quat[:, 1] + target_quat[:, 2]*target_quat[:, 3]),
+                   1 - 2*(target_quat[:, 1]**2 + target_quat[:, 2]**2)),  # roll
+        torch.asin(2*(target_quat[:, 0]*target_quat[:, 2] - target_quat[:, 3]*target_quat[:, 1])),  # pitch
+        torch.atan2(2*(target_quat[:, 0]*target_quat[:, 3] + target_quat[:, 1]*target_quat[:, 2]),
+                   1 - 2*(target_quat[:, 2]**2 + target_quat[:, 3]**2))   # yaw
+    ], dim=1)
+    
     object_pos = get_object_position(env)  # (n, 3)
-    # Identity quaternion [1, 0, 0, 0] repeated
-    id_quat = torch.zeros((len(object_pos), 4), device=object_pos.device, dtype=object_pos.dtype)
-    id_quat[:, 0] = 1.0
-
-    stage0 = torch.cat([object_pos, torch.zeros_like(target_pos), id_quat], dim=1)  # (n, 10)
-    stage1 = torch.cat([torch.zeros_like(object_pos), torch.zeros_like(target_pos), id_quat], dim=1)  # (n, 10)
-    stage2 = torch.cat([torch.zeros_like(object_pos), target_pos, id_quat], dim=1)  # (n, 10)
-
-    return torch.stack([stage0, stage1, stage2], dim=1)  # (3, 10)
+    object_orient = get_object_orientation(env)  # (n, 3)
+    
+    return torch.stack([
+        torch.cat([object_pos, torch.zeros_like(target_pos), torch.zeros_like(target_orient)], dim=1),
+        torch.cat([torch.zeros_like(object_pos), target_pos, target_orient], dim=1)
+    ], dim=1)  # (n, 2, 9): stage0_goal(3) + stage1_pos(3) + stage1_orient(3)
 
 
 def format_achieved_goals(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Format achieved goals for HER-style training (3 stages, 10 dims per stage).
-
-    Achieved layout per stage (10D): [ach_hand_pos(3), ach_object_pos(3), ach_object_quat(4)]
-      - Stage 0 (reach): ach_hand_pos
-      - Stage 1 (orientation): ach_object_quat
-      - Stage 2 (lift): ach_object_pos
-    """
+    """Format achieved goals for HER-style training."""
     hand_pos = get_hand_position(env)  # (n, 3)
     object_pos = get_object_position(env)  # (n, 3)
-    object_euler = get_object_orientation(env)  # (n, 3)
-    object_quat = math_utils.quat_from_euler_xyz(object_euler[:, 0], object_euler[:, 1], object_euler[:, 2])  # (n,4)
-
-    id_quat = torch.zeros((len(object_pos), 4), device=object_pos.device, dtype=object_pos.dtype)
-    id_quat[:, 0] = 1.0
-
-    stage0 = torch.cat([hand_pos, torch.zeros_like(object_pos), id_quat], dim=1)  # (n, 10)
-    stage1 = torch.cat([torch.zeros_like(hand_pos), torch.zeros_like(object_pos), object_quat], dim=1)  # (n, 10)
-    stage2 = torch.cat([torch.zeros_like(hand_pos), object_pos, id_quat], dim=1)  # (n, 10)
-
-    return torch.stack([stage0, stage1, stage2], dim=1)  # (3, 10)
+    object_orient = get_object_orientation(env)  # (n, 3)
+    
+    return torch.stack([
+        torch.cat([hand_pos, torch.zeros_like(object_pos), torch.zeros_like(object_orient)], dim=1),
+        torch.cat([torch.zeros_like(hand_pos), object_pos, object_orient], dim=1)
+    ], dim=1)  # (n, 2, 9): stage0_achieved(3) + stage1_pos(3) + stage1_orient(3)
 
 
 def get_invalid_hand(env: ManagerBasedRLEnv) -> torch.Tensor:
