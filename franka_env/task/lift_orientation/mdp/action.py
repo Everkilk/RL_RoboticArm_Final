@@ -29,16 +29,24 @@ class ActionsCfg:
     finger_action: EMAJointPositionToLimitsActionCfg = EMAJointPositionToLimitsActionCfg(
         asset_name="robot", 
         joint_names=[
-            # Index finger (4 DOF)
-            'robot0_FFJ3', 'robot0_FFJ2', 'robot0_FFJ1', 'robot0_FFJ0',
-            # Middle finger (4 DOF)
-            'robot0_MFJ3', 'robot0_MFJ2', 'robot0_MFJ1', 'robot0_MFJ0',
-            # Ring finger (4 DOF)
-            'robot0_RFJ3', 'robot0_RFJ2', 'robot0_RFJ1', 'robot0_RFJ0',
-            # Little finger (5 DOF)
-            'robot0_LFJ4', 'robot0_LFJ3', 'robot0_LFJ2', 'robot0_LFJ1', 'robot0_LFJ0',
-            # Thumb (5 DOF - excluding wrist joints)
-            'robot0_THJ4', 'robot0_THJ3', 'robot0_THJ2', 'robot0_THJ1', 'robot0_THJ0',
+            # Wrist (2 DOF)
+            'robot0_WRJ1', 'robot0_WRJ0',
+            # Fingers metacarpal joints (4 DOF)
+            'robot0_FFJ3', 'robot0_MFJ3', 'robot0_RFJ3', 'robot0_LFJ4',
+            # Thumb base (1 DOF)
+            'robot0_THJ4',
+            # Fingers proximal joints (4 DOF)
+            'robot0_FFJ2', 'robot0_MFJ2', 'robot0_RFJ2', 'robot0_LFJ3',
+            # Thumb proximal (1 DOF)
+            'robot0_THJ3',
+            # Fingers middle joints (4 DOF)
+            'robot0_FFJ1', 'robot0_MFJ1', 'robot0_RFJ1', 'robot0_LFJ2',
+            # Thumb middle (1 DOF)
+            'robot0_THJ2',
+            # Fingers distal joints (4 DOF)
+            'robot0_FFJ0', 'robot0_MFJ0', 'robot0_RFJ0', 'robot0_LFJ1',
+            # Thumb distal (2 DOF)
+            'robot0_THJ1', 'robot0_LFJ0', 'robot0_THJ0',
         ],
         alpha=0.95
     )
