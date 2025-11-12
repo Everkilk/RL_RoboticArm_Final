@@ -77,3 +77,7 @@ htmlcov/
 !runs/exp4/
 !runs/exp4/policy/
 !runs/exp4/policy/best_policy.pt
+
+# Allow tracking checkpoint folder for experiment exp4
+!runs/exp4/ckpt/
+!runs/exp4/ckpt/**
