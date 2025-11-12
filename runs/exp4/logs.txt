@@ -1,0 +1,12 @@
+2025-11-12 16:33:45,140 : *** Experiment directory: runs/exp4
+2025-11-12 16:33:45,141 : >>>>>>>>>>---------- START TRAINING ----------<<<<<<<<<<
+2025-11-12 16:33:45,141 : - Start epoch: 1
+2025-11-12 16:33:45,141 : - Best evaluation: -inf
+2025-11-12 16:33:45,141 : - Total updates: 0
+2025-11-12 16:33:45,141 : - Start time: 00s
+2025-11-12 16:34:07,296 : *** RUNNING RESULTS:[epoch: 1/2000, cycle: 16/400, run_time: 22.15s]
+|   eps_reward |   eps_horizon |   distance |   moved_dist |    moved_z |   hand2obj_dist |   goal_achieved |
+|--------------+---------------+------------+--------------+------------+-----------------+-----------------|
+|            0 |            64 |   0.329357 |     0.029057 | 0.00768839 |        0.253655 |               0 |
+--- total_updates: 128, duration: 22s
+

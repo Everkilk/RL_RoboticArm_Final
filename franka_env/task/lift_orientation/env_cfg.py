@@ -8,6 +8,8 @@
 import sys
 import math
 from pathlib import Path
+from omegaconf import MISSING
+import gymnasium as gym
 
 # Add the source directory to Python path
 source_dir = Path(__file__).resolve().parent.parent.parent.parent
@@ -204,7 +206,7 @@ class FrankaShadowLiftOrientationSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class FrankaShadowLiftOrientationEnvCfg(ManagerBasedRLEnvCfg):
-    """Configuration for the Franka-Shadow lift with orientation task using manager-based approach."""
+    """Configuration for the Franka-Shadow lift task using manager-based approach."""
     
     # Scene settings
     scene: FrankaShadowLiftOrientationSceneCfg = FrankaShadowLiftOrientationSceneCfg(num_envs=16, env_spacing=2.5)
@@ -222,12 +224,38 @@ class FrankaShadowLiftOrientationEnvCfg(ManagerBasedRLEnvCfg):
     # Environment settings
     decimation = 2
     episode_length_s = 10.0
+    seed = None  # Will be set from command line args
+    
+    # Gym space settings (required for Isaac Lab 2.2+)
+    # Isaac Lab 2.2.1 requires explicit space definitions (None not allowed)
+    # Observation space structure (matching ObservationsCfg):
+    # - observation: Box(134,) - concatenated obs (6+6+30+31+31+25=129) + padding = 134
+    # - desired_goal: Box(6,) - target object pose
+    # - achieved_goal: Box(6,) - current object pose  
+    # - meta: Box(3,) - validity flags (invalid_hand, invalid_range, collisions)
+    observation_space = gym.spaces.Dict({
+        "observation": gym.spaces.Box(low=-float('inf'), high=float('inf'), shape=(134,)),
+        "desired_goal": gym.spaces.Box(low=-float('inf'), high=float('inf'), shape=(6,)),
+        "achieved_goal": gym.spaces.Box(low=-float('inf'), high=float('inf'), shape=(6,)),
+        "meta": gym.spaces.Box(low=-float('inf'), high=float('inf'), shape=(3,))
+    })
+    # Action space: Box(30,) - 6 IK commands (DifferentialIK) + 24 finger joints (Shadow Hand)
+    action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(30,))
+    state_space = None  # For asymmetric actor-critic (not used here)
+    num_states = None  # Optional: for asymmetric actor-critic
+    # Deprecated attributes (kept for backward compatibility with Isaac Lab API check)
+    num_actions = 30  # 6 IK commands + 24 finger joints
+    num_observations = 134  # Robot state observations
+    
+    # Noise models (Isaac Lab 2.2+ requirement)
+    action_noise_model = None  # No noise model by default
+    observation_noise_model = None  # No observation noise by default
     
     def __post_init__(self):
         """Post initialization."""
         # general settings
         self.decimation = 2
-        self.episode_length_s = 3.2
+        self.episode_length_s = 3.2  
         # simulation settings
         self.sim.dt = 0.025
         self.sim.render_interval = self.decimation
@@ -253,7 +281,7 @@ class FrankaShadowLiftOrientationEnvCfg(ManagerBasedRLEnvCfg):
         # rl settings
         self.num_frames = 3
         self.num_actions = 28
-        self.num_observations = 132
-        self.num_goals = 10  # 10D: 3 (pos) + 3 (pos) + 4 (quat)
-        self.num_stages = 3  # Stage 0: reach, Stage 1: align orientation, Stage 2: lift to goal
+        self.num_observations = 134  # Updated to match actual observation dimension
+        self.num_goals = 9  # 9D per stage: 3 (stage0_reach_pos) + 3 (stage1_lift_pos) + 3 (stage1_lift_orient)
+        self.num_stages = 2  # Stage 0: reach object, Stage 1: lift to goal with orientation
         self.reward_func = FrankaCudeLiftReward(scale_factor=1.0)
