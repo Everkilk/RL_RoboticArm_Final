@@ -73,14 +73,13 @@ htmlcov/
 *.bak
 *.orig
 
-# Allow tracking a specific trained policy file (override the global '*.pt' ignore)
-!runs/exp4/
-!runs/exp4/policy/
-!runs/exp4/policy/best_policy.pt
+# Allow tracking policy and checkpoint folders for all experiments (override the global '*.pt' and 'runs/' ignore)
+!runs/
+!runs/**/policy/
+!runs/**/policy/**
+!runs/**/ckpt/
+!runs/**/ckpt/**
 
-# Allow tracking checkpoint folder for experiment exp4
-!runs/exp4/ckpt/
-!runs/exp4/ckpt/**
-
-# Explicitly ignore the very large memory checkpoint
-runs/exp4/ckpt/memory.pt
+# Keep memory checkpoint files ignored (very large)
+runs/**/ckpt/**/memory.pt
+runs/**/ckpt/memory.pt
