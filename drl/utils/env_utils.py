@@ -248,10 +248,19 @@ class IsaacEnv(gym.Env):
         self.cfg.scene.num_envs = 1
         # get environment manager -------------------
         self.manager = manager(self.cfg)
-        # configure spaces --------------------------
-        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.cfg.num_observations,))
-        self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.cfg.num_actions,))
 
+    @property
+    def max_episode_length(self) -> int:
+        return self.manager.max_episode_length
+    
+    @property
+    def observation_space(self):
+        return self.manager.single_observation_space
+    
+    @property
+    def action_space(self):
+        return self.manager.single_action_space
+    
     def reset(self, seed=None):
         observation, info = self.manager.reset(seed=seed)
         observation = map_structure(lambda x: x[0].cpu().numpy(), observation)

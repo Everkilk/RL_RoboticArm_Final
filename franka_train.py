@@ -12,12 +12,7 @@ from isaaclab.app import AppLauncher
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Tutorial on creating a cartpole base environment.")
-parser.add_argument("--task", type=str, default="lift", choices=["lift", "lift_orientation"], 
-                    help="Task to train: 'lift' (position only) or 'lift_orientation' (position + orientation)")
 parser.add_argument("--num-envs", type=int, default=10, help="Number of environments to spawn.")
-parser.add_argument("--num_cycles", type=int, default=200, help="Number of cycles per epoch.")
-parser.add_argument("--num_updates", type=int, default=128, help="Number of gradient updates per cycle.")
-parser.add_argument("--resume_path", type=str, default=None, help="Path to resume training from (e.g., runs/exp4)")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -37,7 +32,7 @@ import numpy as np
 import torch.nn as nn
 import gymnasium as gym
 
-from franka_env import ManagerRLGoalEnv, FrankaShadowLiftEnvCfg, FrankaShadowLiftOrientationEnvCfg
+from franka_env import ManagerRLGoalEnv, FrankaShadowLiftEnvCfg
 
 from drl.utils.env_utils import IsaacVecEnv
 from drl.agent.sac import CSAC_GCRL
@@ -46,23 +41,7 @@ from drl.learning.rher import RHER
 from drl.utils.optim.adamw import AdamWOptimizer
 from drl.utils.nn.seq import SeqGRUNet
 
-# Select task configuration based on command line argument
-if args_cli.task == "lift":
-    ENV_CFG_CLASS = FrankaShadowLiftEnvCfg
-    ENV_CFG = FrankaShadowLiftEnvCfg()
-    print(f"[INFO] Selected task: LIFT (position only, 2 stages)")
-elif args_cli.task == "lift_orientation":
-    ENV_CFG_CLASS = FrankaShadowLiftOrientationEnvCfg
-    ENV_CFG = FrankaShadowLiftOrientationEnvCfg()
-    print(f"[INFO] Selected task: LIFT_ORIENTATION (position + orientation, 3 stages)")
-else:
-    raise ValueError(f"Unknown task: {args_cli.task}")
-
-print(f"[INFO] Task configuration:")
-print(f"  - num_stages: {ENV_CFG.num_stages}")
-print(f"  - num_goals: {ENV_CFG.num_goals}")
-print(f"  - num_observations: {ENV_CFG.num_observations}")
-print(f"  - num_actions: {ENV_CFG.num_actions}")
+ENV_CFG = FrankaShadowLiftEnvCfg()
 
 
 class PolicyNetwork(nn.Module):
@@ -139,7 +118,7 @@ def make_optimizer_fn(params, model_name: str):
 if __name__ == '__main__':
     envs = IsaacVecEnv(
         manager=ManagerRLGoalEnv,
-        cfg=ENV_CFG_CLASS,  # Pass the class, not the instance
+        cfg=FrankaShadowLiftEnvCfg,
         num_envs=args_cli.num_envs
     )
     agent = CSAC_GCRL(
@@ -165,15 +144,15 @@ if __name__ == '__main__':
     )
     learner.run(
         epochs=2000,
-        num_cycles=args_cli.num_cycles,        
+        num_cycles=200,        
         num_eval_episodes=50,  
         r_mix=0.5,             
-        num_updates=args_cli.num_updates,       
-        batch_size=512, 
+        num_updates=128,       
+        batch_size=512,
         future_p=0.8,                   
         discounted_factor=0.98,
         clip_return=None,
         n_steps=ENV_CFG.num_frames,
         step_decay=0.7,
-        resume_path=args_cli.resume_path if args_cli.resume_path else ''
+        resume_path="C:\\Users\\PC\\Downloads\\KLTN_AnhChinh\\KLTN_Robotics\\runs\\exp3"
     )
