@@ -271,12 +271,22 @@ class RHER(RLFrameWork):
                 # update training parameters and save checkpoint
                 if eval_value >= self._best_eval:
                     self._best_eval = float(eval_value)
+                    # Save to experiment directory
                     self.save_policy(
                         f=exp_dir / 'policy', 
                         best_eval=self._best_eval, 
                         global_step=epoch, 
                         save_every_best=save_every_best
                     )
+                    best_policy_dir = Path(project_path) /'runs'/ 'best_policy' / 'lift'
+                    best_policy_dir.mkdir(parents=True, exist_ok=True)
+                    self.save_policy(
+                        f=best_policy_dir,
+                        best_eval=self._best_eval,
+                        global_step=epoch,
+                        save_every_best=False
+                    )
+                        
                 self.save_ckpt(f=exp_dir / 'ckpt', running_params={
                     'start_epoch': epoch + 1,
                     'best_eval': self._best_eval,
