@@ -25,7 +25,7 @@ class ActionsCfg:
         scale=[0.05, 0.05, 0.05, math.pi / 8, math.pi / 8, math.pi / 8]  # INCREASED: 2x position, 1.5x rotation for faster exploration
     )
     
-    # Direct joint control for Shadow Hand fingers (19 DOF - excluding wrist)
+    # Direct joint control for Shadow Hand fingers (24 DOF)
     finger_action: EMAJointPositionToLimitsActionCfg = EMAJointPositionToLimitsActionCfg(
         asset_name="robot", 
         joint_names=[
