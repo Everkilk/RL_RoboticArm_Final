@@ -90,9 +90,9 @@ if __name__ == '__main__':
         observation_space=env.observation_space,
         action_space=env.action_space
     )
-    print(env.action_space.shape)
-    input()
-    policy_state_dict = torch.load(r'C:\Users\PC\Downloads\KLTN_AnhChinh\KLTN_Robotics\runs\exp3\policy\best_policy2.pt', map_location='cpu', weights_only=False)
+    # print(env.action_space.shape)
+    # input()
+    policy_state_dict = torch.load(r'C:\Users\PC\Documents\GitHub\RL_RoboticArm_Final\runs\exp0\policy\best_policy.pt', map_location='cpu', weights_only=False)
     print('Policy Loading: ', policy.load_state_dict(policy_state_dict))
     policy = policy.eval().cuda()
 
