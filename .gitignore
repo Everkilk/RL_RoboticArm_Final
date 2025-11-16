@@ -87,5 +87,5 @@ runs/**/ckpt/memory.pt
 # Re-ignore TensorBoard event files and event folders under runs/ (prevent accidental commits)
 # `events.out.tfevents.*` is already ignored above, but because `!runs/` un-ignored the runs/ tree,
 # explicitly ignore `events` directories under `runs/` to ensure they stay untracked.
-runs/**/events/
-runs/**/events/**
+!runs/**/events/
+!runs/**/events/**
