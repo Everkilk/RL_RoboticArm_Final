@@ -1,4 +1,4 @@
-best_eval: 1.8084339717046243
-start_epoch: 863
-time_delta: 488191.57163095474
-total_updates: 5516800
+best_eval: 1.8086205636468802
+start_epoch: 1021
+time_delta: 567003.9373538494
+total_updates: 6528000
