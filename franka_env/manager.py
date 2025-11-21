@@ -6,10 +6,10 @@ from tree import map_structure
 from collections.abc import Sequence
 from typing import Any, ClassVar
 
-# from isaaclab.version import get_version
-
+# from omni.isaac.version import get_version
 from isaaclab.envs import ManagerBasedEnv, ManagerBasedRLEnvCfg, VecEnvStepReturn
 from isaaclab.managers import CommandManager, TerminationManager
+
 
 
 class ManagerRLGoalEnv(ManagerBasedEnv, gym.Env):
@@ -352,7 +352,6 @@ class ManagerRLGoalEnv(ManagerBasedEnv, gym.Env):
         Args:
             env_ids: List of environment ids which must be reset
         """
-        
         # reset the internal buffers of the scene elements
         self.scene.reset(env_ids)
         # apply events such as randomizations for environments that need a reset

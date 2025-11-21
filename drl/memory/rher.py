@@ -116,7 +116,7 @@ class RHERMemory(MemoryBuffer):
             relabel_ids = random.sample(range(batch_size), k=num_relables)
             re_traj_ind, re_t_ind = traj_ind[relabel_ids], t_ind[relabel_ids]
 
-             # sample time offsets
+            # sample time offsets
             t_offsets = (max_offsets[relabel_ids] * torch.rand(num_relables, device=self.device)).long()
 
             # relabel goals with future goals

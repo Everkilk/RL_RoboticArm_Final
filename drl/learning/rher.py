@@ -71,14 +71,18 @@ class RHER(RLFrameWork):
         mt_goals: Any, 
         *, 
         r_mix: float = 0.5, 
+        act_rd: float = 0.0,
         deterministic: bool = False
     ) -> Union[Tuple[Any, np.ndarray], Any]:
         if not deterministic:
             observations = map_structure(self.agent.format_data, observations)
             mt_goals = map_structure(self.agent.format_data, mt_goals)
             stages, goal_achieveds = self._get_stages(observations, mt_goals)
-            actions = self._select_action(observations, mt_goals, stages, r_mix=r_mix)
-            actions = map_structure(lambda x: x.cpu().numpy(), actions)
+            if random.random() < act_rd: 
+                actions = self.envs.action_space.sample()
+            else:  
+                actions = self._select_action(observations, mt_goals, stages, r_mix=r_mix)
+                actions = map_structure(lambda x: x.cpu().numpy(), actions)
             goal_achieveds = goal_achieveds.cpu().numpy().astype(bool)
             return actions, goal_achieveds
         # get final goals and select actions with the policy
@@ -107,14 +111,18 @@ class RHER(RLFrameWork):
                   desc='- Training', leave=False) as pbar:
             for _ in pbar:
                 # sample data from the memory
-                data = self.memory.sample(batch_size=batch_size, 
-                                          future_p=future_p, 
-                                          n_steps=n_steps,   
-                                          step_decay=step_decay)
+                data = self.memory.sample(
+                    batch_size=batch_size, 
+                    future_p=future_p, 
+                    n_steps=n_steps,   
+                    step_decay=step_decay
+                )
                 # run train step
-                evals = self.agent.update(data=data, 
-                                          discounted_factor=discounted_factor,
-                                          clip_return=clip_return)
+                evals = self.agent.update(
+                    data=data, 
+                    discounted_factor=discounted_factor,
+                    clip_return=clip_return
+                )
                 # update metrics
                 avg_evals.update(evals)
 
@@ -181,6 +189,7 @@ class RHER(RLFrameWork):
         num_cycles: int = 100,
         num_eval_episodes: int = 20,
         r_mix: float = 0.5,
+        act_rd: float = 0.05,
         *,
         # train params
         num_updates: int = 50,
@@ -220,7 +229,7 @@ class RHER(RLFrameWork):
                 for i, cycle in enumerate(range(num_envs, num_cycles + num_envs, num_envs)):
                     cycle_t0 = time.time()
                     # generate rollouts with policy
-                    batch_rollouts, run_info = self.generate_rollouts(r_mix=r_mix)
+                    batch_rollouts, run_info = self.generate_rollouts(r_mix=r_mix, act_rd=act_rd)
                     train_run_info.update(run_info)
                     # store generated rollouts
                     self.store_rollouts(batch_rollouts)
@@ -271,22 +280,12 @@ class RHER(RLFrameWork):
                 # update training parameters and save checkpoint
                 if eval_value >= self._best_eval:
                     self._best_eval = float(eval_value)
-                    # Save to experiment directory
                     self.save_policy(
                         f=exp_dir / 'policy', 
                         best_eval=self._best_eval, 
                         global_step=epoch, 
                         save_every_best=save_every_best
                     )
-                    best_policy_dir = Path(project_path) /'runs'/ 'best_policy' / 'lift'
-                    best_policy_dir.mkdir(parents=True, exist_ok=True)
-                    self.save_policy(
-                        f=best_policy_dir,
-                        best_eval=self._best_eval,
-                        global_step=epoch,
-                        save_every_best=False
-                    )
-                        
                 self.save_ckpt(f=exp_dir / 'ckpt', running_params={
                     'start_epoch': epoch + 1,
                     'best_eval': self._best_eval,
@@ -310,7 +309,7 @@ class RHER(RLFrameWork):
         rollouts['goal_achieved'] = np.float16(rollouts['goal_achieved'])
         self.memory.store(rollouts)
 
-    def generate_rollouts(self, r_mix: Union[str, float] = 'auto') -> Tuple[Dict[str, Any], Dict[str, float]]:
+    def generate_rollouts(self, r_mix: float = 0.5, act_rd: float = 0.05) -> Tuple[Dict[str, Any], Dict[str, float]]:
         self.envs.train()
 
         # initialize params for running
@@ -327,7 +326,7 @@ class RHER(RLFrameWork):
             # select actions from the policy
             actions, goal_achieveds = self.select_actions(
                 observations['observation'], observations['desired_goal'], 
-                r_mix=r_mix, deterministic=False
+                r_mix=r_mix, act_rd=act_rd, deterministic=False
             )
 
             # apply the selected actions into environments and go to next observations
@@ -343,7 +342,7 @@ class RHER(RLFrameWork):
         
         # format and return batch rollouts
         rollouts = {
-            name: map_structure(lambda x: np.swapaxes(x, 0, 1), groupby_structure(rollout, func=np.stack))
+            name: map_structure(lambda x: np.swapaxes(x, 0, 1), groupby_structure(list_structs=rollout, func=np.stack))
             for name, rollout in rollouts.items()
         }
         infos = {name: value for name, value in infos.items() if value.dtype != np.object_}

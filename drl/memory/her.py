@@ -70,16 +70,13 @@ class HERMemory(MemoryBuffer):
         self, 
         batch_size: int, 
         future_p: float = 0.8, 
-        discounted_factor: float = 0.98,
         n_steps: int = 1, 
-        step_decay: float = 0.7,
-        use_cl: bool = False
+        step_decay: float = 0.7
     ) -> Dict[str, Buffer]:
         """ Sample batch transitions from the memory. """
         assert self._buffer_length > 0, ValueError("Buffer is empty!!!")
         assert batch_size > 0, ValueError(f'Invalid batch_size value ({batch_size}).')
         assert 0 <= future_p <= 1, ValueError(f'Invalid future_p value ({future_p}).')
-        assert 0 <= discounted_factor <= 1, ValueError(f'Invalid discounted_factor ({discounted_factor}).')
         assert n_steps > 0, ValueError(f'Invalid n_steps ({n_steps}).')
         assert 0 < step_decay <=1, ValueError(f'Invalid step_decay ({step_decay}).')
 
@@ -115,22 +112,6 @@ class HERMemory(MemoryBuffer):
             # relabel goals with future goals
             relabel_goals = map_structure(lambda x: x[re_traj_ind, re_t_ind + t_offsets], self._buffers['achieved_goal'])
             put_structure(buffers['goals'], relabel_ids, relabel_goals)
-
-        # sample future goals -------------------------------
-        if use_cl: # use contrastive learning
-            # determine maximum time offsets relative to relabel time steps
-            goal_check = goal_achieveds * (1 - torch.roll(goal_achieveds, shifts=-1, dims=1))
-            future_check = torch.arange(self.horizon, device=self.device).view(1, -1).repeat(batch_size, 1).gt_(t_ind.view(-1, 1))
-            goal_future_check = (goal_check * future_check)
-            goal_future_check[torch.all(goal_future_check == 0, dim=1), -1] = 1
-            max_offsets = goal_future_check.argmax(dim=-1) - t_ind + 1
-
-            # sample offset time steps
-            offset_weight_mat = torch.zeros(batch_size, max_offsets.max() + 1, device=self.device)
-            offset_weight_mat[torch.arange(batch_size, device=self.device), max_offsets] = 1.0
-            offset_weight_mat = torch.cumprod(discounted_factor * (1 - torch.cummax(offset_weight_mat, dim=1).values), dim=1)
-            t_offsets = torch.multinomial(offset_weight_mat, num_samples=1, replacement=False).flatten()
-            buffers['future_goals'] = map_structure(lambda x: x[traj_ind, t_ind + t_offsets], self._buffers['achieved_goal'])
 
         # compute rewards and check terminal state
         if n_steps == 1:

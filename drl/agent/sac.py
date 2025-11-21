@@ -17,7 +17,7 @@ from drl.utils.general import map_structure, Device, Params
 ###########################################################################################################
 ######################### CONTINUOUS SOFT ACTOR-CRITIC + GOAL-CONDITIONED RL ##############################
 ###########################################################################################################
-class CSAC_GCRL(Agent):
+class SAC_GCRL(Agent):
     """ Continuous Soft Actor-Critic with Goal-Conditioned Reinforcement Learning. """
     def __init__(
         self, 

@@ -51,7 +51,7 @@ class AdamWOptimizer(AdamW, Optimizer):
             capturable=capturable,
             differentiable=differentiable,
             fused=fused,
-            decoupled_weight_decay=True,  # Required for PyTorch 2.0+ AdamW
+            decoupled_weight_decay=True,  # AdamW uses decoupled weight decay
         )
         Optimizer.__init__(self=self, params=params, defaults=defaults, max_norm=max_norm, accumulation=accumulation)
         if fused:
@@ -69,7 +69,6 @@ class AdamWOptimizer(AdamW, Optimizer):
             group.setdefault("foreach", None)
             group.setdefault("capturable", False)
             group.setdefault("differentiable", False)
-            group.setdefault("decoupled_weight_decay", True)  # Required for PyTorch 2.0+
             fused = group.setdefault("fused", None)
             for p in group["params"]:
                 p_state = self.state.get(p, [])
