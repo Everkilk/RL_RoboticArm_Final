@@ -15,7 +15,7 @@ def get_object_position(env: ManagerBasedRLEnv) -> torch.Tensor:
     return get_object_position_in_robot_root_frame(
         env=env, 
         robot_cfg=SceneEntityCfg('robot'),
-        object_cfg=SceneEntityCfg('cube'),
+        object_cfg=SceneEntityCfg('object'),
     )  # (n, 3)
 
 def get_object_orientation(env: ManagerBasedRLEnv) -> torch.Tensor:
@@ -23,7 +23,7 @@ def get_object_orientation(env: ManagerBasedRLEnv) -> torch.Tensor:
     return get_object_orientation_in_robot_root_frame(
         env=env, 
         robot_cfg=SceneEntityCfg('robot'),
-        object_cfg=SceneEntityCfg('cube')
+        object_cfg=SceneEntityCfg('object')
     )  # (n, 3) 
 
 def get_object_pose(env: ManagerBasedRLEnv) -> torch.Tensor:
@@ -105,7 +105,7 @@ def get_invalid_object_range(env: ManagerBasedRLEnv) -> torch.Tensor:
     return check_invalid_object_range(
         env=env, env_ids=None,
         x_range=(0.1, 0.5), y_range=(-0.2, 0.2), z_thresh=0.05, 
-        asset_cfg=SceneEntityCfg('cube')
+        asset_cfg=SceneEntityCfg('object')
     ).view(-1, 1)
 
 def get_dangerous_robot_collisions(env: ManagerBasedRLEnv) -> torch.Tensor:

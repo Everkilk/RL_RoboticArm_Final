@@ -18,10 +18,10 @@ def reset_object_poses(
     object_pose = sample_root_state_uniform(
         env=env, env_ids=env_ids, 
         pose_range={'x': (-0.2, 0.2), 'y': (-0.2, 0.2), 'yaw': (0, 2 * math.pi)},
-        asset_cfg=SceneEntityCfg('cube')
+        asset_cfg=SceneEntityCfg('object')
     )[0]
     # set into the physics simulation
-    env.scene['cube'].write_root_pose_to_sim(object_pose, env_ids=env_ids)
+    env.scene['object'].write_root_pose_to_sim(object_pose, env_ids=env_ids)
 
 
 def clip_object_ranges(
@@ -30,7 +30,7 @@ def clip_object_ranges(
     clip_object_xy_range(
         env=env, env_ids=env_ids,
         x_range=(0.05, 0.55), y_range=(-0.3, 0.3), z_thresh=0.05,
-        asset_cfg=SceneEntityCfg('cube')
+        asset_cfg=SceneEntityCfg('object')
     )
     
 

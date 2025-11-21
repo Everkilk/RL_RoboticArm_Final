@@ -111,12 +111,12 @@ class PositionCommand(CommandTerm):
         self.pre_pos_object_b[env_ids] = get_object_position_in_robot_root_frame(
             env=self._env, env_ids=env_ids,
             robot_cfg=SceneEntityCfg('robot'), 
-            object_cfg=SceneEntityCfg('cube')
+            object_cfg=SceneEntityCfg('object')
         )
         self.pre_orient_object_b[env_ids] = get_object_orientation_in_robot_root_frame(
             env=self._env, env_ids=env_ids, 
             robot_cfg=SceneEntityCfg('robot'), 
-            object_cfg=SceneEntityCfg('cube')
+            object_cfg=SceneEntityCfg('object')
         )
         
         for metric_name in self.metrics:
@@ -190,7 +190,7 @@ class CommandsCfg:
         body_name: str = 'fr3_link0'
         """Name of the body in the asset for which the commands are generated."""
 
-        object_name: str = 'cube'
+        object_name: str = 'object'
         """Name of the object in the environment for which the object are interacted."""
         
         target_ee_name: str = 'target_hand_frame'
