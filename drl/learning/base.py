@@ -80,7 +80,12 @@ class RLFrameWork:
     def load_ckpt(self, f: Union[str, Path], running_param_names: Tuple[str, ...]):
         f = Path(f)
         assert f.exists() and f.is_dir(), EOFError(f'Invalid f path ({f.as_posix()}).')
-        self.memory.load_state_dict(torch.load(f=f / 'memory.pt', map_location='cpu', weights_only=False))
+        # Try loading memory checkpoint first. If memory file is corrupted or unreadable,
+        # log a warning and continue loading the agent and running params so training can resume.
+        try:
+            self.memory.load_state_dict(torch.load(f=f / 'memory.pt', map_location='cpu', weights_only=False))
+        except Exception as e:
+            LOGGER.warning(f'Failed to load memory checkpoint ({(f / "memory.pt").as_posix()}): {e}. Continuing without memory restore.')
         self.agent.load_state_dict(torch.load(f=f / 'agent.pt', map_location='cpu', weights_only=False))
         with open(f / 'running_params.yaml', mode='r') as file:
             running_params = yaml.full_load(stream=file)
