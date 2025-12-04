@@ -155,10 +155,9 @@ class FrankaShadowLiftSceneCfg(InteractiveSceneCfg):
         ],  
     )
     
-    # Multiple objects for random spawning
-    # All 3 objects will be created, but only one will be active per environment
-    cube: RigidObjectCfg = RigidObjectCfg(
-        prim_path="{ENV_REGEX_NS}/cube",
+    # Object 1: DexCube 
+    object_cube: RigidObjectCfg = RigidObjectCfg(
+        prim_path="{ENV_REGEX_NS}/object_cube",
         spawn=UsdFileCfg(
             usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
             rigid_props=RigidBodyPropertiesCfg(
@@ -175,12 +174,13 @@ class FrankaShadowLiftSceneCfg(InteractiveSceneCfg):
             scale=(1.2, 1.2, 1.2),
         ),
         init_state=RigidObjectCfg.InitialStateCfg(
-            pos=(0.3, 0.0, 0.03), rot=(1.0, 0.0, 0.0, 0.0)
+            pos=(0.3, 0.0, 0.08), rot=(1.0, 0.0, 0.0, 0.0)  # Higher z to prevent falling through table
         ),
     )
     
-    mustard_bottle: RigidObjectCfg = RigidObjectCfg(
-        prim_path="{ENV_REGEX_NS}/mustard_bottle",
+    # Object 2: YCB Mustard Bottle
+    object_mustard: RigidObjectCfg = RigidObjectCfg(
+        prim_path="{ENV_REGEX_NS}/object_mustard",
         spawn=UsdFileCfg(
             usd_path=str(Path(__file__).parent.parent.parent / "assets" / "Object" / "mustard_bottle.usd"),
             rigid_props=RigidBodyPropertiesCfg(
@@ -194,35 +194,35 @@ class FrankaShadowLiftSceneCfg(InteractiveSceneCfg):
                 max_depenetration_velocity=1000.0,
             ),
             mass_props=MassPropertiesCfg(mass=0.44),  # 440 grams
-            scale=(1.0, 1.0, 1.0),
+            scale=(0.6, 0.6, 0.6),
         ),
         init_state=RigidObjectCfg.InitialStateCfg(
-            pos=(0.3, 0.0, 0.05), rot=(1.0, 0.0, 0.0, 0.0)
+            pos=(0.3, 0.0, 0.05), rot=(0.7071, 0.7071, 0.0, 0.0)  # 90° rotation around X-axis to stand up
         ),
     )
     
-    drill: RigidObjectCfg = RigidObjectCfg(
-        prim_path="{ENV_REGEX_NS}/drill",
-        spawn=UsdFileCfg(
-            usd_path=str(Path(__file__).parent.parent.parent / "assets" / "Object" / "drill.usd"),
-            rigid_props=RigidBodyPropertiesCfg(
-                kinematic_enabled=False,
-                disable_gravity=False,
-                enable_gyroscopic_forces=True,
-                solver_position_iteration_count=8,
-                solver_velocity_iteration_count=0,
-                sleep_threshold=0.005,
-                stabilization_threshold=0.0025,
-                max_depenetration_velocity=1000.0,
-            ),
-            mass_props=MassPropertiesCfg(mass=1.2),  # 1200 grams
-            scale=(1.0, 1.0, 1.0),
-        ),
-        init_state=RigidObjectCfg.InitialStateCfg(
-            pos=(0.3, 0.0, 0.05), rot=(1.0, 0.0, 0.0, 0.0)
-        ),
-    )
-    # ==============================================================
+    # # Object 3: YCB Drill
+    # object_drill: RigidObjectCfg = RigidObjectCfg(
+    #     prim_path="{ENV_REGEX_NS}/object_drill",
+    #     spawn=UsdFileCfg(
+    #         usd_path=str(Path(__file__).parent.parent.parent / "assets" / "Object" / "drill.usd"),
+    #         rigid_props=RigidBodyPropertiesCfg(
+    #             kinematic_enabled=False,
+    #             disable_gravity=False,
+    #             enable_gyroscopic_forces=True,
+    #             solver_position_iteration_count=8,
+    #             solver_velocity_iteration_count=0,
+    #             sleep_threshold=0.005,
+    #             stabilization_threshold=0.0025,
+    #             max_depenetration_velocity=1000.0,
+    #         ),
+    #         mass_props=MassPropertiesCfg(mass=1.2),  # 1200 grams
+    #         scale=(1.0, 1.0, 1.0),
+    #     ),
+    #     init_state=RigidObjectCfg.InitialStateCfg(
+    #         pos=(0.3, 0.0, 0.05), rot=(1.0, 0.0, 0.0, 0.0)
+    #     ),
+    # )
 
     # Environment objects
     table = AssetBaseCfg(
@@ -290,7 +290,7 @@ class FrankaShadowLiftEnvCfg(ManagerBasedRLEnvCfg):
     num_states = None  # Optional: for asymmetric actor-critic
     # Deprecated attributes (kept for backward compatibility with Isaac Lab API check)
     num_actions = 30  # 6 IK commands + 24 finger joints
-    num_observations = 134  # Robot state observations
+    num_observations = 136  # Robot state observations (updated for multi-object: object_pose=6, hand_pose=6, fingertip_poses=30, joint_pos=31, joint_vel=31, last_action=25, total=129+6+1=136)
     
     # Noise models (Isaac Lab 2.2+ requirement)
     action_noise_model = None  # No noise model by default

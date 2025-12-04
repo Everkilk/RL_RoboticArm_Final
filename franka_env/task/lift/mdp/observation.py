@@ -1,5 +1,4 @@
 from .common import *
-from .events import OBJECT_NAMES
 
 # Isaac Lab imports
 from isaaclab.utils import configclass
@@ -11,47 +10,64 @@ from isaaclab.managers import ObservationTermCfg as ObsTerm
 ##### OBSERVATION FUNCTIONS
 ###
 
-def _get_active_object_data(env: ManagerBasedRLEnv, data_func):
-    """Helper to get data from the active object for each environment."""
+# Object names matching events.py
+OBJECT_NAMES = ['object_cube', 'object_mustard']  # 'object_drill' commented out in env_cfg
+
+def _get_active_object_data(env: ManagerBasedRLEnv, data_type: str) -> torch.Tensor:
+    """
+    Helper function to get data from the currently active object for each environment.
+    
+    Args:
+        env: The environment instance
+        data_type: Type of data to retrieve ('position', 'orientation')
+    
+    Returns:
+        Tensor of shape (num_envs, 3) containing the requested data
+    """
+    num_envs = env.num_envs
+    device = env.device
+    
+    # Initialize active_objects tensor if it doesn't exist yet
     if not hasattr(env, 'active_objects'):
-        # Fallback to cube if not initialized
-        return data_func(env, 'cube')
+        env.active_objects = torch.zeros(num_envs, dtype=torch.long, device=device)
     
-    # Gather data from all objects
-    all_data = []
-    for obj_name in OBJECT_NAMES:
-        all_data.append(data_func(env, obj_name))
+    # Initialize output tensor
+    if data_type == 'position':
+        output = torch.zeros((num_envs, 3), device=device)
+        get_func = get_object_position_in_robot_root_frame
+    elif data_type == 'orientation':
+        output = torch.zeros((num_envs, 3), device=device)
+        get_func = get_object_orientation_in_robot_root_frame
+    else:
+        raise ValueError(f"Unknown data_type: {data_type}")
     
-    # Stack and select based on active_objects
-    stacked = torch.stack(all_data, dim=0)  # (num_objects, num_envs, ...)
+    # For each object type, get data for environments where it's active
+    for obj_idx, obj_name in enumerate(OBJECT_NAMES):
+        # Find which environments have this object active
+        is_active = (env.active_objects == obj_idx)
+        
+        if is_active.any():
+            # Get data for this object
+            obj_data = get_func(
+                env=env,
+                robot_cfg=SceneEntityCfg('robot'),
+                object_cfg=SceneEntityCfg(obj_name)
+            )  # (num_envs, 3)
+            
+            # Copy only for active environments
+            output[is_active] = obj_data[is_active]
     
-    # Create index tensor for gathering
-    indices = env.active_objects.view(1, -1, *([1] * (stacked.dim() - 2)))
-    indices = indices.expand(1, -1, *stacked.shape[2:])
-    
-    # Gather the active object data
-    result = torch.gather(stacked, 0, indices).squeeze(0)
-    return result
+    return output
+
 
 def get_object_position(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Get object position in robot root frame."""
-    def _get_pos(env, obj_name):
-        return get_object_position_in_robot_root_frame(
-            env=env, 
-            robot_cfg=SceneEntityCfg('robot'),
-            object_cfg=SceneEntityCfg(obj_name),
-        )
-    return _get_active_object_data(env, _get_pos)  # (n, 3)
+    """Get active object position in robot root frame."""
+    return _get_active_object_data(env, 'position')  # (n, 3)
+
 
 def get_object_orientation(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Get object orientation in robot root frame."""
-    def _get_ori(env, obj_name):
-        return get_object_orientation_in_robot_root_frame(
-            env=env, 
-            robot_cfg=SceneEntityCfg('robot'),
-            object_cfg=SceneEntityCfg(obj_name)
-        )
-    return _get_active_object_data(env, _get_ori)  # (n, 3) 
+    """Get active object orientation in robot root frame."""
+    return _get_active_object_data(env, 'orientation')  # (n, 3) 
 
 def get_object_pose(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Get object position and orientation in robot root frame."""
@@ -128,17 +144,48 @@ def get_invalid_hand(env: ManagerBasedRLEnv) -> torch.Tensor:
     return (hand_ee_frame[:, 2] - 0.075 <= 0.0).view(-1, 1)
 
 def get_invalid_object_range(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Check if object is outside valid workspace range."""
-    def _check_range(env, obj_name):
-        return check_invalid_object_range(
-            env=env, env_ids=None,
-            x_range=(0.1, 0.5), y_range=(-0.2, 0.2), z_thresh=0.05, 
-            asset_cfg=SceneEntityCfg(obj_name)
-        )
-    return _get_active_object_data(env, _check_range).view(-1, 1)
+    """Check if active object is outside valid workspace range."""
+    num_envs = env.num_envs
+    device = env.device
+    
+    # Initialize active_objects tensor if it doesn't exist yet
+    if not hasattr(env, 'active_objects'):
+        env.active_objects = torch.zeros(num_envs, dtype=torch.long, device=device)
+    
+    output = torch.zeros((num_envs, 1), device=device, dtype=torch.bool)
+    
+    # Check each object type for environments where it's active
+    for obj_idx, obj_name in enumerate(OBJECT_NAMES):
+        is_active = (env.active_objects == obj_idx)
+        
+        if is_active.any():
+            obj_invalid = check_invalid_object_range(
+                env=env, env_ids=None,
+                x_range=(0.1, 0.5), y_range=(-0.2, 0.2), z_thresh=0.05, 
+                asset_cfg=SceneEntityCfg(obj_name)
+            ).view(-1, 1)
+            
+            output[is_active] = obj_invalid[is_active]
+    
+    return output
 
 def get_dangerous_robot_collisions(env: ManagerBasedRLEnv) -> torch.Tensor:
     return check_collisions(env, threshold=10.0, contact_sensor_cfg=SceneEntityCfg('contact_sensor'))
+
+def get_object_class_one_hot(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Get one-hot encoding of the active object class."""
+    num_envs = env.num_envs
+    device = env.device
+    num_classes = len(OBJECT_NAMES)
+    
+    # Initialize active_objects tensor if it doesn't exist yet
+    if not hasattr(env, 'active_objects'):
+        env.active_objects = torch.zeros(num_envs, dtype=torch.long, device=device)
+    
+    one_hot = torch.zeros((num_envs, num_classes), device=device)
+    one_hot.scatter_(1, env.active_objects.view(-1, 1), 1.0)
+    
+    return one_hot  # (n, num_classes)
 
 
 @configclass
@@ -154,11 +201,13 @@ class ObservationsCfg:
         fingertip_poses = ObsTerm(func=get_fingertip_poses)  # (30,)
         joint_pos = ObsTerm(func=get_joint_pos_rel)  # (31,) - 7 arm + 24 hand
         joint_vel = ObsTerm(func=get_joint_vel_rel)  # (31,)
-        last_action = ObsTerm(func=get_last_action)  # (25,) - 6 IK + 19 finger
+        last_action = ObsTerm(func=get_last_action)  # (25,) - 6 IK + 19 finger 
+        object_class = ObsTerm(func=get_object_class_one_hot)  # (2,) one-hot for 2 objects
 
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
+
 
     @configclass
     class DesiredGoalCfg(ObsGroup):
