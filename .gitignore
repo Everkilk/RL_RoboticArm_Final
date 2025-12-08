@@ -1,0 +1,14 @@
+# Exclude training runs and checkpoints
+runs/exp1
+run/*/ckpt/memory.pt
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
