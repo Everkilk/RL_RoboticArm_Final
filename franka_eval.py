@@ -92,7 +92,7 @@ if __name__ == '__main__':
     )
     # print(env.action_space.shape)
     # input()
-    policy_state_dict = torch.load(r'runs\best_policy\lift\best_policy.pt', map_location='cpu', weights_only=False)
+    policy_state_dict = torch.load(r'runs\best_policy\lift\best_policy2.pt', map_location='cpu', weights_only=False)
     print('Policy Loading: ', policy.load_state_dict(policy_state_dict))
     policy = policy.eval().cuda()
 

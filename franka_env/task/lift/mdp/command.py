@@ -16,75 +16,6 @@ from isaaclab.markers.config import FRAME_MARKER_CFG
 ##### COMMAND PART
 ###
 
-# Object names matching events.py and observation.py
-OBJECT_NAMES = ['object_cube', 'object_mustard']  # 'object_drill' commented out in env_cfg
-
-def _get_active_object_position(env: ManagerBasedRLEnv, env_ids=None) -> torch.Tensor:
-    """Get active object position in robot root frame."""
-    num_envs = env.num_envs if env_ids is None else len(env_ids)
-    device = env.device
-    
-    # Initialize active_objects tensor if it doesn't exist yet
-    if not hasattr(env, 'active_objects'):
-        env.active_objects = torch.zeros(env.num_envs, dtype=torch.long, device=device)
-    
-    output = torch.zeros((num_envs if env_ids is None else len(env_ids), 3), device=device)
-    
-    envs_to_query = torch.arange(env.num_envs, device=device) if env_ids is None else env_ids
-    
-    for obj_idx, obj_name in enumerate(OBJECT_NAMES):
-        is_active = (env.active_objects[envs_to_query] == obj_idx)
-        
-        if is_active.any():
-            obj_pos = get_object_position_in_robot_root_frame(
-                env=env,
-                env_ids=env_ids if env_ids is not None else None,
-                robot_cfg=SceneEntityCfg('robot'),
-                object_cfg=SceneEntityCfg(obj_name)
-            )
-            
-            if env_ids is None:
-                output[is_active] = obj_pos[is_active]
-            else:
-                # Map back to subset indices
-                local_idx = torch.arange(len(env_ids), device=device)[is_active]
-                output[local_idx] = obj_pos[is_active]
-    
-    return output
-
-def _get_active_object_orientation(env: ManagerBasedRLEnv, env_ids=None) -> torch.Tensor:
-    """Get active object orientation in robot root frame."""
-    num_envs = env.num_envs if env_ids is None else len(env_ids)
-    device = env.device
-    
-    # Initialize active_objects tensor if it doesn't exist yet
-    if not hasattr(env, 'active_objects'):
-        env.active_objects = torch.zeros(env.num_envs, dtype=torch.long, device=device)
-    
-    output = torch.zeros((num_envs if env_ids is None else len(env_ids), 3), device=device)
-    
-    envs_to_query = torch.arange(env.num_envs, device=device) if env_ids is None else env_ids
-    
-    for obj_idx, obj_name in enumerate(OBJECT_NAMES):
-        is_active = (env.active_objects[envs_to_query] == obj_idx)
-        
-        if is_active.any():
-            obj_orient = get_object_orientation_in_robot_root_frame(
-                env=env,
-                env_ids=env_ids if env_ids is not None else None,
-                robot_cfg=SceneEntityCfg('robot'),
-                object_cfg=SceneEntityCfg(obj_name)
-            )
-            
-            if env_ids is None:
-                output[is_active] = obj_orient[is_active]
-            else:
-                # Map back to subset indices
-                local_idx = torch.arange(len(env_ids), device=device)[is_active]
-                output[local_idx] = obj_orient[is_active]
-    
-    return output
-
 class PositionCommand(CommandTerm):
     """Configuration for the command generator."""
 
@@ -101,8 +32,7 @@ class PositionCommand(CommandTerm):
         # extract the robot and body index for which the command is generated
         self.robot: Articulation = env.scene[cfg.asset_name]
         self.body_idx = self.robot.find_bodies(cfg.body_name)[0][0]
-        # Store all objects - we'll visualize the active one
-        self.objects = {name: env.scene[name] for name in OBJECT_NAMES}
+        self.object: RigidObject = env.scene[cfg.object_name]
         self.target_ee = env.scene[cfg.target_ee_name]
 
         # create buffers
@@ -153,8 +83,12 @@ class PositionCommand(CommandTerm):
         
         # get current command object pose --------
         pos_command_b = self.command
-        pos_object_b = _get_active_object_position(env=self._env)
-        orient_object_b = _get_active_object_orientation(env=self._env)
+        pos_object_b = get_object_position_in_robot_root_frame(
+            env=self._env, robot_cfg=SceneEntityCfg(self.cfg.asset_name), object_cfg=SceneEntityCfg(self.cfg.object_name)
+        )
+        orient_object_b = get_object_orientation_in_robot_root_frame(
+            env=self._env, robot_cfg=SceneEntityCfg(self.cfg.asset_name), object_cfg=SceneEntityCfg(self.cfg.object_name)
+        )
         hand_ee_pos_b = get_hand_pose(env=self._env)[:, :3]
         # update metrics --------------------------
         self.metrics['distance'] = (pos_object_b - pos_command_b).norm(dim=1)
@@ -173,9 +107,17 @@ class PositionCommand(CommandTerm):
         self.pose_command_b[env_ids, 1] = self.pose_command_b[env_ids, 1].uniform_(-0.15, 0.15)
         self.pose_command_b[env_ids, 2] = self.pose_command_b[env_ids, 1].uniform_(0.2, 0.35)
 
-        # get active object positions and orientation
-        self.pre_pos_object_b[env_ids] = _get_active_object_position(env=self._env, env_ids=env_ids)
-        self.pre_orient_object_b[env_ids] = _get_active_object_orientation(env=self._env, env_ids=env_ids)
+        # get object positions and orientation
+        self.pre_pos_object_b[env_ids] = get_object_position_in_robot_root_frame(
+            env=self._env, env_ids=env_ids,
+            robot_cfg=SceneEntityCfg('robot'), 
+            object_cfg=SceneEntityCfg('object')
+        )
+        self.pre_orient_object_b[env_ids] = get_object_orientation_in_robot_root_frame(
+            env=self._env, env_ids=env_ids, 
+            robot_cfg=SceneEntityCfg('robot'), 
+            object_cfg=SceneEntityCfg('object')
+        )
         
         for metric_name in self.metrics:
             self.metrics[metric_name][env_ids] = 0.0
@@ -226,13 +168,8 @@ class PositionCommand(CommandTerm):
         # -- current body pose
         body_pose_w = self.robot.data.body_state_w[:, self.body_idx]
         self.body_pose_visualizer.visualize(body_pose_w[:, :3], body_pose_w[:, 3:7])
-        # --- current object pose (visualize active object for each env)
-        # For visualization, we'll show the first active object
-        # In practice, each environment may have different active objects
-        active_obj_idx = self._env.active_objects[0].item()
-        active_obj_name = OBJECT_NAMES[active_obj_idx]
-        active_obj = self.objects[active_obj_name]
-        self.object_pose_visualizer.visualize(active_obj.data.root_pos_w, active_obj.data.root_quat_w)
+        # --- current object pose
+        self.object_pose_visualizer.visualize(self.object.data.root_pos_w, self.object.data.root_quat_w)
         # --- current end effector pose
         self.ee_pose_visualizer.visualize(self.target_ee.data.target_pos_w.view(-1, 3), self.target_ee.data.target_quat_w.view(-1, 4))
 
@@ -252,6 +189,9 @@ class CommandsCfg:
         
         body_name: str = 'fr3_link0'
         """Name of the body in the asset for which the commands are generated."""
+
+        object_name: str = 'object'
+        """Name of the object in the environment for which the object are interacted."""
         
         target_ee_name: str = 'target_hand_frame'
         """Name of the target end-effector frame of the asset"""
