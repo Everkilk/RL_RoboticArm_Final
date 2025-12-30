@@ -92,7 +92,7 @@ if __name__ == '__main__':
     )
     # print(env.action_space.shape)
     # input()
-    policy_state_dict = torch.load(r'runs\best_policy\lift\best_policy2.pt', map_location='cpu', weights_only=False)
+    policy_state_dict = torch.load(r'runs\best_policy\lift\best_policy.pt', map_location='cpu', weights_only=False)
     print('Policy Loading: ', policy.load_state_dict(policy_state_dict))
     policy = policy.eval().cuda()
 
@@ -106,7 +106,7 @@ if __name__ == '__main__':
                     'observation': map_structure(lambda x: torch.from_numpy(x).unsqueeze(0).cuda(), obs['observation']),
                     'goal': torch.from_numpy(obs['desired_goal'][-1]).unsqueeze(0).cuda()
                 }
-                action = policy(input_dict)[0].squeeze(0).cpu().numpy()
+                action = policy(input_dict)[0].tanh().squeeze(0).cpu().numpy()
             obs, reward, terminated, truncated, info = env.step(action)
             if terminated or truncated:
                 break
