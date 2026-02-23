@@ -12,9 +12,14 @@ The agent is trained entirely in simulation using **Isaac Sim 5.0** (Isaac Lab).
 - **Objects**: Randomly spawned YCB-style objects placed on the table — including a **chili bottle**, a **power drill**, and a **mustard bottle**. Object type and initial pose are randomized each episode to encourage generalization.
 - **Table**: A fixed surface where the object is placed at the start of each episode. The robot must reach, grasp, and lift the object to a target goal pose.
 
-Two task variants are supported:
+![Simulation Scene](docs/start_task.png)
+
+One task variant is supported:
 - **`lift`** — position-only goal: lift the object to a target 3D position.
-- **`lift_orientation`** — full 6-DoF goal: match both target position and orientation.
+
+## Demo
+
+![Training Demo](docs/demo.gif)
 
 ---
 
